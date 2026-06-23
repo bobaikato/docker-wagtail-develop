@@ -1,0 +1,111 @@
+# 
+#                █████
+#               ░░███
+#       ██████  ███████    ██████
+#      ███░░███░░░███░    ░░░░░███
+#     ░███ ░███  ░███      ███████
+#     ░███ ░███  ░███ ███ ███░░███
+#     ░░██████   ░░█████ ░░████████
+#      ░░░░░░     ░░░░░   ░░░░░░░░
+#
+#   Copyright (C) 2026 — 2026, Ota. All Rights Reserved.
+#
+#   DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+#
+#   Licensed under the Apache License, Version 2.0. See LICENSE for the full license text.
+#   You may not use this file except in compliance with that License.
+#   Unless required by applicable law or agreed to in writing, software distributed under the
+#   License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+#   either express or implied. See the License for the specific language governing permissions
+#   and limitations under the License.
+#
+#   If you need additional information or have any questions, please email: os@ota.run
+
+version: 1
+project:
+  name: docker-wagtail-develop
+  description: >
+    Narrow pressure slice for Wagtail's documented Docker Compose development flow, including the
+    dedicated Postgres volume destroy path.
+execution:
+  default_context: host
+  contexts:
+    host:
+      backend: native
+      requirements:
+        tools:
+          docker: "*"
+services:
+  db:
+    manager:
+      kind: compose
+      name: docker-wagtail-develop
+      file: compose.yaml
+      service: db
+tasks:
+  web:up:
+    context: host
+    description: Start the documented Wagtail development containers
+    notes: Mirrors the README path `docker compose up web`.
+    command:
+      exe: docker
+      args:
+        - compose
+        - up
+        - web
+    requirements:
+      tools:
+        docker: "*"
+    effects:
+      external_state:
+        - docker
+        - postgres
+  db:setup:
+    context: host
+    description: Run the documented database setup script
+    notes: >
+      Mirrors the README setup step `./setup-db.sh`, which initializes the persisted Docker volume
+      on first startup.
+    command:
+      exe: ./setup-db.sh
+    depends_on:
+      - web:up
+    effects:
+      writes:
+        - bakerydemo
+      external_state:
+        - docker
+        - postgres
+    safe_for_agent: false
+  db:destroy:
+    context: host
+    description: Remove the documented Postgres Docker volume and restart the Compose service
+    notes: >
+      Mirrors the dedicated `make destroy-db` surface, which removes the
+      `docker-wagtail-develop_postgres-data` volume owned by the `db` Compose service.
+    action:
+      kind: reset_compose_service_volume
+      service: db
+      volume: docker-wagtail-develop_postgres-data
+      compose:
+        files:
+          - compose.yaml
+        project_name: docker-wagtail-develop
+    requirements:
+      tools:
+        docker: "*"
+    effects:
+      external_state:
+        - docker
+        - postgres
+    safe_for_agent: false
+workflows:
+  default: local-dev
+  local-dev:
+    intent: local_development
+    description: Documented Docker Compose setup path for local Wagtail development
+    prepare:
+      task: web:up
+metadata:
+  ota:
+    minimum_version: "1.6.22"
