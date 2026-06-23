@@ -4,3 +4,6 @@ libs
 .idea
 .vscode
 .DS_Store
+.ota/state/
+.ota/receipts/
+.ota/proof/

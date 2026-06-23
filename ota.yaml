@@ -36,6 +36,19 @@ execution:
         tools:
           docker: "*"
 services:
+  web:
+    manager:
+      kind: compose
+      name: docker-wagtail-develop
+      file: compose.yaml
+      service: web
+    endpoints:
+      host:
+        address: 127.0.0.1
+        port: 8000
+    readiness:
+      kind: tcp
+      from: host
   db:
     manager:
       kind: compose
@@ -43,6 +56,22 @@ services:
       file: compose.yaml
       service: db
 tasks:
+  bootstrap:
+    context: host
+    description: Materialize the documented Wagtail development checkout layout
+    notes: >
+      Mirrors the README setup step `./setup.sh`, which clones `bakerydemo`, `wagtail`, and the
+      supporting libraries before Compose startup can work on a fresh checkout.
+    command:
+      exe: ./setup.sh
+    effects:
+      writes:
+        - bakerydemo
+        - wagtail
+        - libs
+      external_state:
+        - git
+    safe_for_agent: false
   web:up:
     context: host
     description: Start the documented Wagtail development containers
@@ -53,6 +82,8 @@ tasks:
         - compose
         - up
         - web
+    depends_on:
+      - bootstrap
     requirements:
       tools:
         docker: "*"
@@ -103,9 +134,11 @@ workflows:
   default: local-dev
   local-dev:
     intent: local_development
-    description: Documented Docker Compose setup path for local Wagtail development
+    description: >
+      Documented Docker Compose setup path for local Wagtail development, including bootstrap,
+      container startup, and database initialization.
     prepare:
-      task: web:up
+      task: db:setup
 metadata:
   ota:
     minimum_version: "1.6.22"
