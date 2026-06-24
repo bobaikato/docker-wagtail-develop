@@ -158,8 +158,8 @@ agent:
     ota:
       note: Install ota only when missing so contributors and agents can use the readiness workflows declared here.
       source:
-        kind: branch
-        branch: 1.6.22-implementation
+        kind: git_rev
+        rev: f78c7f1cd4fdae0c92be06d9834e2b3c9957beee
   notes: |
     This contract intentionally scopes docker-wagtail-develop to the documented Compose development bootstrap,
     container startup, and database initialization flow.
