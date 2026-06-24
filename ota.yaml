@@ -145,6 +145,27 @@ workflows:
       container startup, and database initialization.
     prepare:
       task: db:setup
+agent:
+  posture: readiness_strict
+  entrypoint: bootstrap
+  default_task: web:up
+  protected_paths:
+    - .github/workflows
+    - compose.yaml
+    - Dockerfile
+    - ota.yaml
+  bootstrap:
+    ota:
+      note: Install ota only when missing so contributors and agents can use the readiness workflows declared here.
+      source:
+        kind: branch
+        branch: 1.6.22-implementation
+  notes: |
+    This contract intentionally scopes docker-wagtail-develop to the documented Compose development bootstrap,
+    container startup, and database initialization flow.
+    Review `ota tasks --use` before execution; the modeled tasks clone repos or mutate Docker and database state
+    and are not declared agent-safe by default.
+    Use `ota up --workflow local-dev` for the documented setup path.
 metadata:
   ota:
     minimum_version: "1.6.22"
