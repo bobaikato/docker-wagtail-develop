@@ -76,6 +76,12 @@ tasks:
     context: host
     description: Start the documented Wagtail development containers
     notes: Mirrors the README path `docker compose up web`.
+    adapter_inputs:
+      overlays:
+        compose:
+          files:
+            - compose.yaml
+          project_name: docker-wagtail-develop
     command:
       exe: docker
       args:
