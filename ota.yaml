@@ -35,6 +35,11 @@ execution:
       requirements:
         tools:
           docker: "*"
+surfaces:
+  site:
+    kind: http
+    port: 8000
+    path: /
 services:
   web:
     manager:
@@ -82,11 +87,10 @@ tasks:
           files:
             - compose.yaml
           project_name: docker-wagtail-develop
-    command:
-      exe: docker
-      args:
-        - compose
-        - up
+    launch:
+      kind: compose
+      action: up
+      services:
         - web
     depends_on:
       - bootstrap
@@ -97,22 +101,136 @@ tasks:
       external_state:
         - docker
         - postgres
-  db:setup:
+    runtime:
+      kind: service
+      surfaces:
+        - site
+      readiness:
+        kind: tcp
+        listener: http
+        interval: 5s
+        timeout: 3s
+        retries: 20
+        start_period: 5s
+      listeners:
+        http:
+          protocol: http
+          bind:
+            address: 0.0.0.0
+            port:
+              mode: fixed
+              value: 8000
+          project:
+            host:
+              address: 127.0.0.1
+              primary: true
+              port:
+                mode: fixed
+                value: 8000
+              path: /
+  db:migrate:
     context: host
-    description: Run the documented database setup script
-    notes: >
-      Mirrors the README setup step `./setup-db.sh`, which initializes the persisted Docker volume
-      on first startup.
-    command:
-      exe: ./setup-db.sh
+    description: Run the documented Django migrations inside the running web service
+    notes: Mirrors `docker compose exec web python manage.py migrate --noinput`.
+    adapter_inputs:
+      overlays:
+        compose:
+          files:
+            - compose.yaml
+          project_name: docker-wagtail-develop
+    compose:
+      kind: exec
+      service: web
+      exe: python
+      args:
+        - manage.py
+        - migrate
+        - --noinput
     depends_on:
       - web:up
+    requirements:
+      tools:
+        docker: "*"
+    after_success:
+      - db:load-initial-data
     effects:
       writes:
         - bakerydemo
       external_state:
         - docker
         - postgres
+    safe_for_agent: false
+  db:load-initial-data:
+    context: host
+    description: Load the documented initial Bakerydemo data inside the running web service
+    notes: Mirrors `docker compose exec web python manage.py load_initial_data`.
+    adapter_inputs:
+      overlays:
+        compose:
+          files:
+            - compose.yaml
+          project_name: docker-wagtail-develop
+    compose:
+      kind: exec
+      service: web
+      exe: python
+      args:
+        - manage.py
+        - load_initial_data
+    depends_on:
+      - web:up
+    requirements:
+      tools:
+        docker: "*"
+    after_success:
+      - search:update-index
+    effects:
+      writes:
+        - bakerydemo
+      external_state:
+        - docker
+        - postgres
+    safe_for_agent: false
+  search:update-index:
+    context: host
+    description: Update the documented search index inside the running web service
+    notes: Mirrors `docker compose exec web python manage.py update_index`.
+    adapter_inputs:
+      overlays:
+        compose:
+          files:
+            - compose.yaml
+          project_name: docker-wagtail-develop
+    compose:
+      kind: exec
+      service: web
+      exe: python
+      args:
+        - manage.py
+        - update_index
+    depends_on:
+      - web:up
+    requirements:
+      tools:
+        docker: "*"
+    effects:
+      writes:
+        - bakerydemo
+      external_state:
+        - docker
+        - postgres
+    safe_for_agent: false
+  db:setup:
+    description: Run the documented database setup script
+    notes: >
+      Mirrors the README setup step `./setup-db.sh`, which initializes the persisted Docker volume
+      on first startup through migrate, initial-data, and index-update phases inside the running
+      web service.
+    aggregate:
+      tasks:
+        - db:migrate
+        - db:load-initial-data
+        - search:update-index
     safe_for_agent: false
   db:destroy:
     context: host
@@ -144,7 +262,7 @@ workflows:
       Documented Docker Compose setup path for local Wagtail development, including bootstrap,
       container startup, and database initialization.
     prepare:
-      task: db:setup
+      task: db:migrate
 agent:
   posture: readiness_strict
   entrypoint: bootstrap
@@ -158,8 +276,8 @@ agent:
     ota:
       note: Install ota only when missing so contributors and agents can use the readiness workflows declared here.
       source:
-        kind: git_rev
-        rev: f78c7f1cd4fdae0c92be06d9834e2b3c9957beee
+        kind: branch
+        branch: 1.6.22-implementation
   notes: |
     This contract intentionally scopes docker-wagtail-develop to the documented Compose development bootstrap,
     container startup, and database initialization flow.
