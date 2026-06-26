@@ -66,9 +66,36 @@ tasks:
     description: Materialize the documented Wagtail development checkout layout
     notes: >
       Mirrors the README setup step `./setup.sh`, which clones `bakerydemo`, `wagtail`, and the
-      supporting libraries before Compose startup can work on a fresh checkout.
-    command:
-      exe: ./setup.sh
+      supporting libraries before Compose startup can work on a fresh checkout, then materializes
+      the documented Bakerydemo local settings and `.env` files when missing.
+    action:
+      kind: ensure_bundle
+      steps:
+        - kind: ensure_git_checkout
+          path: bakerydemo
+          source:
+            git: https://github.com/wagtail/bakerydemo.git
+        - kind: ensure_git_checkout
+          path: wagtail
+          source:
+            git: https://github.com/wagtail/wagtail.git
+        - kind: ensure_directory
+          path: libs
+        - kind: ensure_git_checkout
+          path: libs/django-modelcluster
+          source:
+            git: https://github.com/wagtail/django-modelcluster.git
+        - kind: ensure_git_checkout
+          path: libs/Willow
+          source:
+            git: https://github.com/wagtail/Willow.git
+        - kind: copy_if_missing
+          from: bakerydemo/bakerydemo/settings/local.py.example
+          to: bakerydemo/bakerydemo/settings/local.py
+        - kind: ensure_file
+          path: bakerydemo/.env
+          value: |
+            DJANGO_SETTINGS_MODULE=bakerydemo.settings.dev
     effects:
       writes:
         - bakerydemo
@@ -76,6 +103,27 @@ tasks:
         - libs
       external_state:
         - git
+    safe_for_agent: false
+  images:build:
+    context: host
+    description: Build the documented Wagtail development Compose images
+    notes: Mirrors the README setup step `docker compose build`.
+    adapter_inputs:
+      overlays:
+        compose:
+          files:
+            - compose.yaml
+          project_name: docker-wagtail-develop
+    compose:
+      kind: build
+    depends_on:
+      - bootstrap
+    requirements:
+      tools:
+        docker: "*"
+    effects:
+      external_state:
+        - docker
     safe_for_agent: false
   web:up:
     context: host
@@ -92,8 +140,18 @@ tasks:
       action: up
       services:
         - web
+    variants:
+      - when:
+          os: linux
+        env:
+          CURRENT_UID: ${OTA_HOST_UID}:${OTA_HOST_GID}
+        adapter_inputs:
+          overlays:
+            compose:
+              files:
+                - compose.linux.yaml
     depends_on:
-      - bootstrap
+      - images:build
     requirements:
       tools:
         docker: "*"
@@ -250,6 +308,8 @@ tasks:
       tools:
         docker: "*"
     effects:
+      adapter_state:
+        - compose_volume:postgres-data
       external_state:
         - docker
         - postgres
