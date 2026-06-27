@@ -75,20 +75,24 @@ tasks:
           path: bakerydemo
           source:
             git: https://github.com/wagtail/bakerydemo.git
+            ref: 51a8b92edaffc64ff050abdd95bed87c55d550c6
         - kind: ensure_git_checkout
           path: wagtail
           source:
             git: https://github.com/wagtail/wagtail.git
+            ref: ed49bf54e3cd0cda0793cdba4301bf228a5373c9
         - kind: ensure_directory
           path: libs
         - kind: ensure_git_checkout
           path: libs/django-modelcluster
           source:
             git: https://github.com/wagtail/django-modelcluster.git
+            ref: fef1604656d9c146077958e32a86cd8138ee30de
         - kind: ensure_git_checkout
           path: libs/Willow
           source:
             git: https://github.com/wagtail/Willow.git
+            ref: 34de53c6fc30e3384b5a8d60db8a4e71e58eb7a0
         - kind: copy_if_missing
           from: bakerydemo/bakerydemo/settings/local.py.example
           to: bakerydemo/bakerydemo/settings/local.py
@@ -336,8 +340,8 @@ agent:
     ota:
       note: Install ota only when missing so contributors and agents can use the readiness workflows declared here.
       source:
-        kind: branch
-        branch: 1.6.22-implementation
+        kind: git_rev
+        rev: fe72b8079451fb09b7336e26948b4ac4f83bad86
   notes: |
     This contract intentionally scopes docker-wagtail-develop to the documented Compose development bootstrap,
     container startup, and database initialization flow.
