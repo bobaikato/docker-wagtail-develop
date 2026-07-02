@@ -9,9 +9,6 @@ execution:
   contexts:
     host:
       backend: native
-      requirements:
-        tools:
-          docker: "*"
 surfaces:
   site:
     kind: http
@@ -71,6 +68,9 @@ tasks:
               source:
                 git: https://github.com/wagtail/wagtail.git
                 ref: ed49bf54e3cd0cda0793cdba4301bf228a5373c9
+              remotes:
+                - name: upstream
+                  git: git@github.com:wagtail/wagtail.git
             - path: libs/django-modelcluster
               source:
                 git: https://github.com/wagtail/django-modelcluster.git
@@ -79,6 +79,9 @@ tasks:
               source:
                 git: https://github.com/wagtail/Willow.git
                 ref: 34de53c6fc30e3384b5a8d60db8a4e71e58eb7a0
+              remotes:
+                - name: upstream
+                  git: git@github.com:wagtail/Willow.git
         - kind: copy_if_missing
           from: bakerydemo/bakerydemo/settings/local.py.example
           to: bakerydemo/bakerydemo/settings/local.py
@@ -93,6 +96,9 @@ tasks:
         - libs
       external_state:
         - git
+    requirements:
+      tools:
+        git: "*"
     safe_for_agent: false
   images:build:
     context: host
@@ -786,4 +792,4 @@ agent:
     Use `ota up --workflow local-dev` for the documented setup path.
 metadata:
   ota:
-    minimum_version: "1.6.22"
+    minimum_version: "1.6.23"
