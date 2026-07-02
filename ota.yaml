@@ -61,28 +61,24 @@ tasks:
     action:
       kind: ensure_bundle
       steps:
-        - kind: ensure_git_checkout
-          path: bakerydemo
-          source:
-            git: https://github.com/wagtail/bakerydemo.git
-            ref: 51a8b92edaffc64ff050abdd95bed87c55d550c6
-        - kind: ensure_git_checkout
-          path: wagtail
-          source:
-            git: https://github.com/wagtail/wagtail.git
-            ref: ed49bf54e3cd0cda0793cdba4301bf228a5373c9
-        - kind: ensure_directory
-          path: libs
-        - kind: ensure_git_checkout
-          path: libs/django-modelcluster
-          source:
-            git: https://github.com/wagtail/django-modelcluster.git
-            ref: fef1604656d9c146077958e32a86cd8138ee30de
-        - kind: ensure_git_checkout
-          path: libs/Willow
-          source:
-            git: https://github.com/wagtail/Willow.git
-            ref: 34de53c6fc30e3384b5a8d60db8a4e71e58eb7a0
+        - kind: ensure_git_checkouts
+          checkouts:
+            - path: bakerydemo
+              source:
+                git: https://github.com/wagtail/bakerydemo.git
+                ref: 51a8b92edaffc64ff050abdd95bed87c55d550c6
+            - path: wagtail
+              source:
+                git: https://github.com/wagtail/wagtail.git
+                ref: ed49bf54e3cd0cda0793cdba4301bf228a5373c9
+            - path: libs/django-modelcluster
+              source:
+                git: https://github.com/wagtail/django-modelcluster.git
+                ref: fef1604656d9c146077958e32a86cd8138ee30de
+            - path: libs/Willow
+              source:
+                git: https://github.com/wagtail/Willow.git
+                ref: 34de53c6fc30e3384b5a8d60db8a4e71e58eb7a0
         - kind: copy_if_missing
           from: bakerydemo/bakerydemo/settings/local.py.example
           to: bakerydemo/bakerydemo/settings/local.py
