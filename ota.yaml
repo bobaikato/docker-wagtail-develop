@@ -271,6 +271,390 @@ tasks:
         - db:load-initial-data
         - search:update-index
     safe_for_agent: false
+  web:stop:
+    context: host
+    description: Stop the documented Docker Compose services
+    notes: Mirrors `docker compose stop`.
+    adapter_inputs:
+      overlays:
+        compose:
+          files:
+            - compose.yaml
+          project_name: docker-wagtail-develop
+    compose:
+      kind: stop
+    requirements:
+      tools:
+        docker: "*"
+    effects:
+      external_state:
+        - docker
+        - postgres
+    safe_for_agent: false
+  web:down:
+    context: host
+    description: Stop and remove the documented Docker Compose services
+    notes: Mirrors `docker compose down`.
+    adapter_inputs:
+      overlays:
+        compose:
+          files:
+            - compose.yaml
+          project_name: docker-wagtail-develop
+    compose:
+      kind: down
+    requirements:
+      tools:
+        docker: "*"
+    effects:
+      external_state:
+        - docker
+        - postgres
+    safe_for_agent: false
+  test:
+    context: host
+    description: Run the documented Wagtail test suite inside the running web service
+    notes: Mirrors `docker compose exec -w /code/wagtail web python runtests.py`.
+    adapter_inputs:
+      overlays:
+        compose:
+          files:
+            - compose.yaml
+          project_name: docker-wagtail-develop
+    compose:
+      kind: exec
+      service: web
+      workdir: /code/wagtail
+      exe: python
+      args:
+        - runtests.py
+    depends_on:
+      - web:up
+    requirements:
+      tools:
+        docker: "*"
+    effects:
+      external_state:
+        - docker
+        - postgres
+    safe_for_agent: false
+  migrations:make:
+    context: host
+    description: Make Django migrations inside the running web service
+    notes: Mirrors `docker compose exec web python manage.py makemigrations`.
+    adapter_inputs:
+      overlays:
+        compose:
+          files:
+            - compose.yaml
+          project_name: docker-wagtail-develop
+    compose:
+      kind: exec
+      service: web
+      exe: python
+      args:
+        - manage.py
+        - makemigrations
+    depends_on:
+      - web:up
+    requirements:
+      tools:
+        docker: "*"
+    effects:
+      writes:
+        - bakerydemo
+        - wagtail
+      external_state:
+        - docker
+        - postgres
+    safe_for_agent: false
+  lint:wagtail:
+    description: Run the documented Wagtail lint surfaces inside the running services
+    notes: >
+      Mirrors the README lint path `make lint-wagtail`, which runs `make lint-server`,
+      `make lint-docs`, and `make lint-client` through the Compose services.
+    aggregate:
+      tasks:
+        - lint:wagtail:server
+        - lint:wagtail:docs
+        - lint:wagtail:client
+    safe_for_agent: false
+  lint:wagtail:server:
+    context: host
+    description: Run Wagtail server lint inside the running web service
+    notes: Mirrors `docker compose exec -w /code/wagtail web make lint-server`.
+    adapter_inputs:
+      overlays:
+        compose:
+          files:
+            - compose.yaml
+          project_name: docker-wagtail-develop
+    compose:
+      kind: exec
+      service: web
+      workdir: /code/wagtail
+      exe: make
+      args:
+        - lint-server
+    depends_on:
+      - web:up
+    requirements:
+      tools:
+        docker: "*"
+    effects:
+      external_state:
+        - docker
+        - postgres
+    safe_for_agent: false
+  lint:wagtail:docs:
+    context: host
+    description: Run Wagtail docs lint inside the running web service
+    notes: Mirrors `docker compose exec -w /code/wagtail web make lint-docs`.
+    adapter_inputs:
+      overlays:
+        compose:
+          files:
+            - compose.yaml
+          project_name: docker-wagtail-develop
+    compose:
+      kind: exec
+      service: web
+      workdir: /code/wagtail
+      exe: make
+      args:
+        - lint-docs
+    depends_on:
+      - web:up
+    requirements:
+      tools:
+        docker: "*"
+    effects:
+      external_state:
+        - docker
+        - postgres
+    safe_for_agent: false
+  lint:wagtail:client:
+    context: host
+    description: Run Wagtail client lint inside the running frontend service
+    notes: Mirrors `docker compose exec frontend make lint-client`.
+    adapter_inputs:
+      overlays:
+        compose:
+          files:
+            - compose.yaml
+          project_name: docker-wagtail-develop
+    compose:
+      kind: exec
+      service: frontend
+      exe: make
+      args:
+        - lint-client
+    depends_on:
+      - web:up
+    requirements:
+      tools:
+        docker: "*"
+    effects:
+      external_state:
+        - docker
+    safe_for_agent: false
+  format:wagtail:
+    description: Run the documented Wagtail format surfaces inside the running services
+    notes: >
+      Mirrors the README format path `make format-wagtail`, which runs `make format-server`
+      and `make format-client` through the Compose services.
+    aggregate:
+      tasks:
+        - format:wagtail:server
+        - format:wagtail:client
+    safe_for_agent: false
+  format:wagtail:server:
+    context: host
+    description: Run Wagtail server format inside the running web service
+    notes: Mirrors `docker compose exec -w /code/wagtail web make format-server`.
+    adapter_inputs:
+      overlays:
+        compose:
+          files:
+            - compose.yaml
+          project_name: docker-wagtail-develop
+    compose:
+      kind: exec
+      service: web
+      workdir: /code/wagtail
+      exe: make
+      args:
+        - format-server
+    depends_on:
+      - web:up
+    requirements:
+      tools:
+        docker: "*"
+    effects:
+      writes:
+        - wagtail
+      external_state:
+        - docker
+        - postgres
+    safe_for_agent: false
+  format:wagtail:client:
+    context: host
+    description: Run Wagtail client format inside the running frontend service
+    notes: Mirrors `docker compose exec frontend make format-client`.
+    adapter_inputs:
+      overlays:
+        compose:
+          files:
+            - compose.yaml
+          project_name: docker-wagtail-develop
+    compose:
+      kind: exec
+      service: frontend
+      exe: make
+      args:
+        - format-client
+    depends_on:
+      - web:up
+    requirements:
+      tools:
+        docker: "*"
+    effects:
+      writes:
+        - wagtail
+      external_state:
+        - docker
+    safe_for_agent: false
+  shell:django:
+    context: host
+    description: Open the documented Django shell inside the running web service
+    notes: Mirrors `docker compose exec web python manage.py shell`.
+    adapter_inputs:
+      overlays:
+        compose:
+          files:
+            - compose.yaml
+          project_name: docker-wagtail-develop
+    compose:
+      kind: exec
+      service: web
+      exe: python
+      args:
+        - manage.py
+        - shell
+      tty: true
+    depends_on:
+      - web:up
+    requirements:
+      tools:
+        docker: "*"
+    effects:
+      external_state:
+        - docker
+        - postgres
+    safe_for_agent: false
+  shell:db:
+    context: host
+    description: Open the documented PostgreSQL shell inside the running web service
+    notes: Mirrors `docker compose exec web python manage.py dbshell`.
+    adapter_inputs:
+      overlays:
+        compose:
+          files:
+            - compose.yaml
+          project_name: docker-wagtail-develop
+    compose:
+      kind: exec
+      service: web
+      exe: python
+      args:
+        - manage.py
+        - dbshell
+      tty: true
+    depends_on:
+      - web:up
+    requirements:
+      tools:
+        docker: "*"
+    effects:
+      external_state:
+        - docker
+        - postgres
+    safe_for_agent: false
+  shell:web:
+    context: host
+    description: Open the documented shell on the running web service
+    notes: Mirrors `docker compose exec web bash`.
+    adapter_inputs:
+      overlays:
+        compose:
+          files:
+            - compose.yaml
+          project_name: docker-wagtail-develop
+    compose:
+      kind: exec
+      service: web
+      exe: bash
+      tty: true
+    depends_on:
+      - web:up
+    requirements:
+      tools:
+        docker: "*"
+    effects:
+      external_state:
+        - docker
+        - postgres
+    safe_for_agent: false
+  shell:wagtail:
+    context: host
+    description: Open the documented shell in the Wagtail workdir inside the running web service
+    notes: Mirrors `docker compose exec -w /code/wagtail web bash`.
+    adapter_inputs:
+      overlays:
+        compose:
+          files:
+            - compose.yaml
+          project_name: docker-wagtail-develop
+    compose:
+      kind: exec
+      service: web
+      workdir: /code/wagtail
+      exe: bash
+      tty: true
+    depends_on:
+      - web:up
+    requirements:
+      tools:
+        docker: "*"
+    effects:
+      external_state:
+        - docker
+        - postgres
+    safe_for_agent: false
+  shell:frontend:
+    context: host
+    description: Open the documented shell on the running frontend service
+    notes: Mirrors `docker compose exec frontend bash`.
+    adapter_inputs:
+      overlays:
+        compose:
+          files:
+            - compose.yaml
+          project_name: docker-wagtail-develop
+    compose:
+      kind: exec
+      service: frontend
+      exe: bash
+      tty: true
+    depends_on:
+      - web:up
+    requirements:
+      tools:
+        docker: "*"
+    effects:
+      external_state:
+        - docker
+    safe_for_agent: false
   db:destroy:
     context: host
     description: Remove the documented Postgres Docker volume and restart the Compose service
