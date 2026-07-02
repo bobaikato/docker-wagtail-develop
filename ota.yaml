@@ -37,6 +37,19 @@ services:
       name: docker-wagtail-develop
       file: compose.yaml
       service: db
+  elastic:
+    manager:
+      kind: compose
+      name: docker-wagtail-develop
+      file: compose.yaml
+      service: elastic
+    endpoints:
+      host:
+        address: 127.0.0.1
+        port: 9200
+    readiness:
+      kind: tcp
+      from: host
 tasks:
   bootstrap:
     context: host
@@ -140,6 +153,72 @@ tasks:
       external_state:
         - docker
         - postgres
+    runtime:
+      kind: service
+      surfaces:
+        - site
+      readiness:
+        kind: tcp
+        listener: http
+        interval: 5s
+        timeout: 3s
+        retries: 20
+        start_period: 5s
+      listeners:
+        http:
+          protocol: http
+          bind:
+            address: 0.0.0.0
+            port:
+              mode: fixed
+              value: 8000
+          project:
+            host:
+              address: 127.0.0.1
+              primary: true
+              port:
+                mode: fixed
+                value: 8000
+              path: /
+  web:up:elastic:
+    context: host
+    description: Start the documented Wagtail and Elasticsearch development stack
+    notes: >
+      Mirrors the README path `docker compose up web elastic` for search-backend development.
+      Additional Wagtail search-backend dependency installation and configuration still belong to
+      the Wagtail repo and are not claimed as ready by this contract.
+    adapter_inputs:
+      overlays:
+        compose:
+          files:
+            - compose.yaml
+          project_name: docker-wagtail-develop
+    launch:
+      kind: compose
+      action: up
+      services:
+        - web
+        - elastic
+    variants:
+      - when:
+          os: linux
+        env:
+          CURRENT_UID: ${OTA_HOST_UID}:${OTA_HOST_GID}
+        adapter_inputs:
+          overlays:
+            compose:
+              files:
+                - compose.linux.yaml
+    depends_on:
+      - images:build
+    requirements:
+      tools:
+        docker: "*"
+    effects:
+      external_state:
+        - docker
+        - postgres
+        - elasticsearch
     runtime:
       kind: service
       surfaces:
